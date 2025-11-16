@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="results-wrapper" style="height: 80vh; display: flex; gap: 20px;">
+    
+    <!-- LEFT: Scrollable list of video cards -->
+    <div class="col-left flex-grow-1 overflow-auto pe-3">
+        <h2 class="fw-bold mb-4 sticky-top bg-dark pt-2" style="top:0; z-index:5;">🎵 Results for "{{ song_query }}"</h2>
+        {% if videos %}
+            <h3 class="fw-bold mt-4">Cover Videos ({{ cover_count }})</h3>
+            {% for video in cover_videos %}
+            <div class="video-card">
+                <div class="thumbnail-wrapper">
+                    <a href="{{ video.url }}" target="_blank">
+                        <img src="{{ video.thumbnail }}" alt="thumbnail" class="thumbnail">
+                        <span class="video-duration">{{ video.duration }}</span>
+                        <div class="play-overlay">
+                            <i class="bi bi-play-circle-fill"></i>
+                        </div>
+                    </a>
+                </div>
+                <div class="video-info">
+                    <a href="{{ video.url }}" target="_blank">
+                        <h5>{{ video.title }}</h5>
+                    </a>
+                    <p class="mb-1">By: {{ video.channel }}</p>
+                    <small>{{  "{:,}".format(video.views)  }} views • Uploaded {{ video.upload_date }}</small>
+                    <div class="mt-2">
+                        {% if video.cluster_name == "Vocal cover" %}
+                            <span class="badge bg-success">Vocal</span>
+                        {% elif video.cluster_name == "Instrumental" %}
+                            <span class="badge bg-warning text-dark">Instrumental</span>
+                        {% elif video.cluster_name == "Acoustic / Soft" %}
+                            <span class="badge bg-info text-dark">Acoustic</span>
+                        {% elif video.cluster_name == "Band / Full Arrangement" %}
+                            <span class="badge bg-danger">Band</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Other</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            
+            <h3 class="fw-bold mt-5 text-muted">Other Results ({{ total_results - cover_count }})</h3>
+            {% for video in noise_videos %}
+            <div class="video-card">
+                <div class="thumbnail-wrapper">
+                    <a href="{{ video.url }}" target="_blank">
+                        <img src="{{ video.thumbnail }}" alt="thumbnail" class="thumbnail">
+                        <span class="video-duration">{{ video.duration }}</span>
+                        <div class="play-overlay">
+                            <i class="bi bi-play-circle-fill"></i>
+                        </div>
+                    </a>
+                </div>
+                <div class="video-info">
+                    <a href="{{ video.url }}" target="_blank">
+                        <h5>{{ video.title }}</h5>
+                    </a>
+                    <p class="mb-1">By: {{ video.channel }}</p>
+                    <small>{{  "{:,}".format(video.views)  }} views • Uploaded {{ video.upload_date }}</small>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">No results found. Try another song title.</p>
+        {% endif %}
+    </div>
+
+    <!-- RIGHT: Analytics panel with its own scroll -->
+    <div class="col-right overflow-auto" style="width: 380px;">
+        <div class="analytics-panel">
+            <h4>📊 Trend Analytics</h4>
+            <p>Trend Score:</p>
+            <div class="trend-score mb-3">{{ trend_score }}</div>
+            <p class="trend-summary">{{ trend_summary }}</p>
+            <hr>
+            <p>Average Views: 
+                <strong>
+                    {{ "{:,}".format((videos|map(attribute='views')|sum / videos|length)|int) if videos else 0 }}
+                </strong>
+            </p>
+            <hr>
+            <h3>📆 Monthly Upload Frequency</h3>
+            <canvas id="uploadChart" width="400" height="200"></canvas>
+            <hr>
+            <h5>🔥 Top 3 Most Viewed Covers</h5>
+            <ol>
+                {% for t in top_covers %}
+                <li class="mb-2">
+                    <a href="{{ t.url }}" target="_blank">{{ t.title }}</a><br>
+                    <small class="text-secondary">{{ "{:,}".format(t.views) }} views</small>
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    console.log("Months data:", {{ months|tojson }});
+    console.log("Upload counts:", {{ upload_counts|tojson }});
+</script>
+<script>
+    const ctx = document.getElementById('uploadChart').getContext('2d');
+    const months = {{ months|tojson }};
+    const uploadCounts = {{ upload_counts|tojson }};
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months,
+            datasets: [{
+                label: 'Number of Covers',
+                data: uploadCounts,
+                backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    ticks: { color: '#ddd' },
+                    grid: { color: '#444' }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#ddd' },
+                    grid: { color: '#444' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#ddd' }
+                }
+            }
+        }
+    });
+</script>
+
+{% endblock %}
