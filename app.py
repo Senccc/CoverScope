@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request
 from utils.youtube_api import search_youtube_covers
-from utils.analytics import get_top_covers, calculate_trend_score, generate_trend_summary, get_monthly_upload_data, classify_video_title
+from utils.analytics import (
+    get_top_covers, calculate_trend_score, generate_trend_summary, 
+    get_monthly_upload_data, classify_video_title, classify_cover_type
+)
 from utils.ml_classifier import cluster_cover_videos
 
 app = Flask(__name__)
@@ -42,16 +45,22 @@ def results():
 
 
     # 3. Run ML on cover videos
-    cluster_results = cluster_cover_videos(cover_videos)
+    cluster_results = cluster_cover_videos(cover_videos, song_query=song_query)
     labels = cluster_results["labels"]
     cluster_name_map = cluster_results["cluster_name_map"]
     plot_data = cluster_results["plot_data"]
     top_keywords = cluster_results["top_keywords"]
 
     # Assign cluster labels and names back into each video
-    for video, label in zip(cover_videos, labels):
-        video["cluster"] = int(label)
-        video["cluster_name"] = cluster_name_map.get(label, "Other")
+    for i, video in enumerate(cover_videos):
+        # Add Stable, Rule-Based data
+        rule_classification = classify_cover_type(video)
+        video["rule_name"] = rule_classification["name"]
+        video["rule_icon"] = rule_classification["icon"]
+        
+        # Add Volatile, ML-Based data
+        ml_label = labels[i]
+        video["ml_name"] = cluster_name_map.get(ml_label, "Other")
     
     
     return render_template(

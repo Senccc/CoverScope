@@ -1,9 +1,25 @@
 # utils/ml_classifier.py
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, ENGLISH_STOP_WORDS
 from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE  
 import numpy as np
 import re
+
+# Custom stop words list
+JUNK_STOP_WORDS = list(ENGLISH_STOP_WORDS) + [
+    # Web/URL junk
+    'https', 'http', 'com', 'www', 'net', 'org', 'jp', 'info',
+    'twitter', 'x', 'facebook', 'instagram', 'youtu', 'youtube', 'watch',
+    
+    # Common Japanese particles (romaji/hiragana/katakana)
+    # These are often tokenized as single letters, but good to have
+    'no', 'wa', 'wo', 'ni', 'ha', 'desu', 'masu', 'de', 'ga', 'o',
+    'の', 'は', 'を', 'に', 'です', 'ます', 'で', 'が', 'こと', 'する',
+    'の', 'ある', 'ない', 'いる', 'する', 'から', 'まで', 'が', 'て',
+    
+    # Other junk
+    'lyric', 'lyrics', 'mv', 'pv', 'viz', 'ver', 'cover' # 'cover' is noise *for clustering*
+]
 
 # Keyword buckets (English + Japanese)
 VOCAL_KEYWORDS = [
@@ -74,6 +90,25 @@ def map_clusters_to_names(videos, labels):
 
     return mapping
 
+def preprocess_text_for_tfidf(text):
+    if not text:
+        return ""
+    # Make text lowercase
+    text = text.lower()
+    # 1. Remove all URLs
+    text = re.sub(r'https?://\S+|www\.\S+', ' ', text)
+    # 2. Remove anything that looks like a domain name or file
+    text = re.sub(r'\b\w+\.\w+\b', ' ', text)
+    # 3. Remove all numbers
+    text = re.sub(r'\d+', ' ', text)
+    # 4. Remove all punctuation (anything not a letter or whitespace)
+    text = re.sub(r'[^\w\s]', ' ', text)
+    # 5. Remove underscores (which are \w)
+    text = re.sub(r'_', ' ', text)
+    # 6. Collapse whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
 def get_top_keywords_per_cluster(kmeans, vectorizer, cluster_name_map, n_keywords=5):
     """
     Finds the top N keywords (TF-IDF features) for each named cluster.
@@ -102,34 +137,58 @@ def get_top_keywords_per_cluster(kmeans, vectorizer, cluster_name_map, n_keyword
             keywords[name] = top_terms
             
         return keywords
+
     except Exception as e:
         print(f"Error getting top keywords: {e}")
         return {} # Return empty on error
 
-def cluster_cover_videos(videos, max_features=800):
+def cluster_cover_videos(videos, song_query="", max_features=800):
     """
     videos: list of dicts (each must have title and description)
     returns: (labels_list, cluster_index_to_name_dict)
     """
     num_clusters = 4
     
+    # Safety check for when n_samples < n_clusters
     # If we have fewer videos than clusters (e.g., 2 videos, 4 clusters),
     # or no videos at all, clustering is impossible.
     # So, we'll just assign them all to the fallback group (cluster 0).
     if len(videos) < num_clusters:
         labels_list = [0] * len(videos) # e.g., [0, 0] if len(videos) == 2
         cluster_name_map = { 0: FALLBACK_NAME }
-        return labels_list, cluster_name_map
+        return {
+            "labels": labels_list,
+            "cluster_name_map": cluster_name_map,
+            "plot_data": [],
+            "top_keywords": {}
+        }
 
-    corpus = [_text_for_video(v) for v in videos]
+    corpus = [preprocess_text_for_tfidf(_text_for_video(v)) for v in videos]
 
-    # TF-IDF - note: 'english' stop words is fine; Japanese tokens will still pass through
+    query_stop_words = preprocess_text_for_tfidf(song_query).split()
+    # Get unique words, and filter out any single-letter words (like 'a')
+    unique_query_words = list(set(w for w in query_stop_words if len(w) > 1))
+
+    final_stop_words = JUNK_STOP_WORDS + unique_query_words
+
     vectorizer = TfidfVectorizer(
         max_features=max_features,
-        stop_words="english",
+        stop_words=final_stop_words,
         ngram_range=(1, 2)
     )
     X = vectorizer.fit_transform(corpus)
+
+    # If nnz (number of non-zero) is 0, all data was stopped out.
+    if X.nnz == 0:
+        print("Warning: Preprocessing removed all features. Skipping clustering.")
+        labels_list = [0] * len(videos)
+        cluster_name_map = { 0: FALLBACK_NAME }
+        return {
+            "labels": labels_list,
+            "cluster_name_map": cluster_name_map,
+            "plot_data": [],
+            "top_keywords": {}
+        }
 
     # KMeans
     kmeans = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
@@ -142,20 +201,36 @@ def cluster_cover_videos(videos, max_features=800):
     top_keywords = get_top_keywords_per_cluster(kmeans, vectorizer, cluster_name_map)
     
     # Run t-SNE for 2D plot data
-    # Use .toarray() because t-SNE doesn't like sparse matrices
-    tsne = TSNE(n_components=2, random_state=42, perplexity=min(5, len(videos) - 1))
-    coords = tsne.fit_transform(X.toarray())
+    # t-SNE perplexity must be less than n_samples
+    perplexity_value = min(5, len(videos) - 1)
+    if perplexity_value <= 0:
+        perplexity_value = 1 # Set a minimum perplexity
     
-    # Build data for Chart.js scatter plot
     plot_data = []
-    for i, video in enumerate(videos):
-        label_index = int(labels[i])
-        plot_data.append({
-            "x": float(coords[i, 0]),
-            "y": float(coords[i, 1]),
-            "label": cluster_name_map.get(label_index, "Other"),
-            "title": video["title"] # For the tooltip
-        })
+    try:
+        tsne = TSNE(
+            n_components=2, 
+            random_state=42, 
+            perplexity=perplexity_value,
+            init='random',
+            max_iter=250 # Faster, good enough for a plot
+        )
+        # .toarray() is fine since we only have max 50 videos
+        coords = tsne.fit_transform(X.toarray())
+        
+        # Build data for Chart.js scatter plot
+        for i, video in enumerate(videos):
+            label_index = int(labels[i])
+            plot_data.append({
+                "x": float(coords[i, 0]),
+                "y": float(coords[i, 1]),
+                "label": cluster_name_map.get(label_index, "Other"),
+                "title": video["title"] # For the tooltip
+            })
+    except Exception as e:
+        print(f"Error during t-SNE, skipping plot: {e}")
+        plot_data = [] # Return empty list if t-SNE fails
+
     
     # Return all results in a dictionary
     return {

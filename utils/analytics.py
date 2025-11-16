@@ -4,6 +4,55 @@ from collections import Counter
 import numpy as np
 import re
 
+# Keyword buckets for rule-based classification
+ACOUSTIC_KEYWORDS = ["acoustic", "acoustic version", "unplugged", "アコースティック", "アコギ"]
+BAND_KEYWORDS = ["band", "full band", "arrange", "arrangement", "バンドカバー", "編成", "full arrangement", "アレンジ"]
+VOCAL_KEYWORDS = ["vocal", "vocals", "a cappella", "a-capella", "vocal cover", "sing", "歌ってみた", "ボーカル", "ボーカルカバー", "アカペラ", "歌わせていただきました", "歌ってみた"]
+INSTRUMENTAL_KEYWORDS = ["instrumental", "inst", "instrumental cover", "piano", "guitar", "drum", "bass", "solo", "弾いてみた", "インスト", "ピアノ", "ギター"]
+
+# Icon and Name mapping
+COVER_TYPE_MAP = {
+    "acoustic": {"name": "Acoustic / Soft", "icon": "bi bi-music-note-beamed"},
+    "band": {"name": "Band / Full Arrangement", "icon": "bi bi-people-fill"},
+    "vocal": {"name": "Vocal cover", "icon": "bi bi-mic-fill"},
+    "instrumental": {"name": "Instrumental", "icon": "bi bi-music-note-list"},
+    "other": {"name": "Other / Remix", "icon": "bi bi-question-circle-fill"}
+}
+
+# Rule-based NLP classification
+def classify_cover_type(video):
+    """
+    Classifies a single video into a cover category using stable rules.
+    Returns a dict with 'name' and 'icon'.
+    """
+    # Combine title and description for a full text search
+    # Give title more weight by adding it twice
+    title = video.get("title", "")
+    description = video.get("description", "")
+    # Use the full, non-lowercased text for Japanese matching
+    text_to_check_raw = (title + " " + title + " " + description)
+    text_to_check_lower = text_to_check_raw.lower()
+
+    # Check in order of priority
+    for kw in ACOUSTIC_KEYWORDS:
+        if kw in text_to_check_lower:
+            return COVER_TYPE_MAP["acoustic"]
+    
+    for kw in BAND_KEYWORDS:
+        if kw in text_to_check_lower:
+            return COVER_TYPE_MAP["band"]
+            
+    for kw in VOCAL_KEYWORDS:
+        if kw in text_to_check_lower or kw in text_to_check_raw:
+            return COVER_TYPE_MAP["vocal"]
+            
+    for kw in INSTRUMENTAL_KEYWORDS:
+        if kw in text_to_check_lower or kw in text_to_check_raw:
+            return COVER_TYPE_MAP["instrumental"]
+
+    # Fallback if no keywords are found
+    return COVER_TYPE_MAP["other"]
+
 def get_top_covers(videos, top_n=3):
     """Return the top N most viewed covers."""
     return sorted(videos, key=lambda v: v["views"], reverse=True)[:top_n]
@@ -106,6 +155,7 @@ def classify_video_title(title: str) -> str:
         "バンドカバー",      # band cover
         "インスト",          # instrumental
         "アコースティック",   # acoustic
+        "歌わせていただきました", "歌ってみた"
     ]
     
     noise_keywords = [

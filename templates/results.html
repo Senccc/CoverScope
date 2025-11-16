@@ -23,20 +23,21 @@
                         <h5>{{ video.title }}</h5>
                     </a>
                     <p class="mb-1">By: {{ video.channel }}</p>
+                    <!-- --- Show BOTH badges --- -->
+                    {% if video.rule_name %}
+                    <span class="cluster-badge" title="Stable Classification (Rule-Based)">
+                        <i class="{{ video.rule_icon }} me-1"></i>
+                        {{ video.rule_name }}
+                    </span>
+                    {% endif %}
+                    {% if video.ml_name %}
+                    <span class="small-badge" title="ML Cluster (Volatile)">
+                        <i class="bi bi-robot me-1"></i>
+                        {{ video.ml_name }}
+                    </span>
+                    {% endif %}
+                    <br>
                     <small>{{  "{:,}".format(video.views)  }} views • Uploaded {{ video.upload_date }}</small>
-                    <div class="mt-2">
-                        {% if video.cluster_name == "Vocal cover" %}
-                            <span class="badge bg-success">Vocal</span>
-                        {% elif video.cluster_name == "Instrumental" %}
-                            <span class="badge bg-warning text-dark">Instrumental</span>
-                        {% elif video.cluster_name == "Acoustic / Soft" %}
-                            <span class="badge bg-info text-dark">Acoustic</span>
-                        {% elif video.cluster_name == "Band / Full Arrangement" %}
-                            <span class="badge bg-danger">Band</span>
-                        {% else %}
-                            <span class="badge bg-secondary">Other</span>
-                        {% endif %}
-                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -69,7 +70,7 @@
     </div>
 
     <!-- RIGHT: Analytics panel with its own scroll -->
-    <div class="col-right overflow-auto" style="width: 460px;">
+    <div class="col-right overflow-auto" style="width: 550px;">
         <div class="analytics-panel">
             <h4>📊 Trend Analytics</h4>
             <p>Trend Score:</p>
@@ -78,12 +79,12 @@
             <hr>
             <p>Average Views: 
                 <strong>
-                    {{ "{:,}".format((videos|map(attribute='views')|sum / videos|length)|int) if videos else 0 }}
+                    {{ "{:,}".format((cover_videos|map(attribute='views')|sum / cover_videos|length)|int) if cover_videos else 0 }}
                 </strong>
             </p>
             <hr>
             <h3>📆 Monthly Upload Frequency</h3>
-            <canvas id="uploadChart" width="400" height="200"></canvas>
+            <canvas id="uploadChart" width="400" height="250"></canvas>
             <hr>
 
             <!-- TOP KEYWORDS DISPLAY -->
@@ -101,7 +102,7 @@
             <!-- CLUSTER PLOT -->
             {% if plot_data %}
             <h3>🗺️ Cluster Plot</h3>
-            <canvas id="clusterPlot" width="400" height="200"></canvas>
+            <canvas id="clusterPlot" width="400" height="250"></canvas>
             <hr>
             {% endif %}
 
@@ -163,7 +164,7 @@
         }
     });
 
-        // --- NEW CLUSTER PLOT SCRIPT ---
+    // CLUSTER PLOT
     const plotData = {{ plot_data|tojson }};
     if (plotData && plotData.length > 0) {
         const clusterColors = {

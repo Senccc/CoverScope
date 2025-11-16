@@ -191,6 +191,43 @@ button:hover {
     transform: scale(1.1);
 }
 
+/* --- Main Rule-Based Badge --- */
+.cluster-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    color: #1a1a1a; /* Dark text */
+    background-color: #75c3c3; /* Teal color (matches chart) */
+    border-radius: 8px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* --- NEW: Style for the ML cluster badge --- */
+.small-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1;
+    color: #ccc; 
+    background-color: #333;
+    border: 1px dashed #555; /* Dashed to show "volatility" */
+    border-radius: 6px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: help; /* Show 'help' cursor on hover to hint at title */
+}
+.small-badge .bi-robot {
+    font-size: 0.8rem;
+    position: relative;
+    top: 1px;
+}
+
 /* Scrollbar customization */
 .col-left::-webkit-scrollbar, .col-right::-webkit-scrollbar {
     width: 6px;
