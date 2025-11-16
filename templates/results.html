@@ -4,9 +4,21 @@
     
     <!-- LEFT: Scrollable list of video cards -->
     <div class="col-left flex-grow-1 overflow-auto pe-3">
-        <h2 class="fw-bold mb-4 sticky-top bg-dark pt-2" style="top:0; z-index:5;">🎵 Results for "{{ song_query }}"</h2>
+        <div class="sticky-top bg-dark mb-4" style="top:0; z-index:5; border-radius: 6px;">
+            <h2 class="fw-bold text-center py-3 mb-0">🎵 Results for "{{ song_query }}"</h2>
+        </div>
         {% if videos %}
-            <h3 class="fw-bold mt-4">Cover Videos ({{ cover_count }})</h3>
+            <h3 class="fw-bold mt-4">Cover Videos ({{ cover_count }})
+                <span class="info-icon" 
+                      data-bs-toggle="tooltip" 
+                      data-bs-html="true" 
+                      title="<strong>Filtered Covers:</strong><br>
+                             These are results identified as covers. The filter prioritizes keywords like 
+                             <code>cover</code>, <code>歌ってみた</code>, <code>弾いてみた</code>, etc.,
+                             while removing 'noise' (see 'Other Results' below).">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
+            </h3>
             {% for video in cover_videos %}
             <div class="video-card">
                 <div class="thumbnail-wrapper">
@@ -23,15 +35,24 @@
                         <h5>{{ video.title }}</h5>
                     </a>
                     <p class="mb-1">By: {{ video.channel }}</p>
-                    <!-- --- Show BOTH badges --- -->
                     {% if video.rule_name %}
-                    <span class="cluster-badge" title="Stable Classification (Rule-Based)">
+                    <span class="cluster-badge" 
+                          data-bs-toggle="tooltip"
+                          data-bs-html="true"
+                          title="<strong>Stable (Rule-Based):</strong><br>
+                                 Category is determined by a fixed list of keywords 
+                                 (e.g., 'piano', 'vocal', 'band'). Fast, stable, and predictable.">
                         <i class="{{ video.rule_icon }} me-1"></i>
                         {{ video.rule_name }}
                     </span>
                     {% endif %}
                     {% if video.ml_name %}
-                    <span class="small-badge" title="ML Cluster (Volatile)">
+                    <span class="small-badge" 
+                          data-bs-toggle="tooltip"
+                          data-bs-html="true"
+                          title="<strong>ML Cluster (Unsupervised):</strong><br>
+                                 Category is found by an ML model (KMeans) that groups videos by *all* text. 
+                                 It's 'volatile' as it changes with every search, but can find hidden patterns.">
                         <i class="bi bi-robot me-1"></i>
                         {{ video.ml_name }}
                     </span>
@@ -43,7 +64,20 @@
             {% endfor %}
             
             
-            <h3 class="fw-bold mt-5 text-muted">Other Results ({{ total_results - cover_count }})</h3>
+            <h3 class="fw-bold mt-5 text-muted">Other Results ({{ total_results - cover_count }})
+                <span class="info-icon" 
+                      data-bs-toggle="tooltip" 
+                      data-bs-html="true" 
+                      title="<strong>Filtered Noise:</strong><br>
+                             Videos filtered out as 'noise'. This includes: <br>
+                             &bull; Official Music Videos (MVs) <br>
+                             &bull; Lyric videos (<code>lyrics</code>) <br>
+                             &bull; Karaoke tracks (<code>カラオケ</code>) <br>
+                             &bull; Live performances (<code>live</code>) <br>
+                             &bull; Other non-cover content.">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
+            </h3>
             {% for video in noise_videos %}
             <div class="video-card">
                 <div class="thumbnail-wrapper">
@@ -70,10 +104,24 @@
     </div>
 
     <!-- RIGHT: Analytics panel with its own scroll -->
-    <div class="col-right overflow-auto" style="width: 550px;">
+    <div class="col-right overflow-auto">
         <div class="analytics-panel">
             <h4>📊 Trend Analytics</h4>
-            <p>Trend Score:</p>
+            <p>Trend Score:
+                <span class="info-icon" 
+                      data-bs-toggle="tooltip" 
+                      data-bs-html="true" 
+                      title="<strong>Trend Score Formula:</strong><br>
+                             <code>Score = ( (Recency * 0.4) + (Views * 0.4) + (Volume * 0.2) ) * 100</code>
+                             <br><br>
+                             &bull; <strong>Recency:</strong> Avg. recency of covers (1 for new, 0 for >1yr old).<br>
+                             &bull; <strong>Views:</strong> Log-normalized total views (<code>log(Views+1) / 15</code>).<br>
+                             &bull; <strong>Volume:</strong> Number of covers, capped at 50 (<code>min(Covers, 50) / 50</code>).
+                             <br><br>
+                             A score of <strong>100</strong> means high recent activity. A <strong>0</strong> means no/old covers.">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
+            </p>
             <div class="trend-score mb-3">{{ trend_score }}</div>
             <p class="trend-summary">{{ trend_summary }}</p>
             <hr>
@@ -87,31 +135,52 @@
             <canvas id="uploadChart" width="400" height="250"></canvas>
             <hr>
 
-            <!-- TOP KEYWORDS DISPLAY -->
+            {% if top_keywords or plot_data %}
+            <h3>
+                ML Cluster Analysis
+                <span class="info-icon" 
+                      data-bs-toggle="tooltip" 
+                      data-bs-html="true" 
+                      title="<strong>ML Analysis Pipeline:</strong><br>
+                             1. Video text is cleaned and vectorized (TF-IDF).<br>
+                             2. A <strong>KMeans</strong> model finds 4 clusters.<br>
+                             3. <strong>Top Keywords</strong> are the most important words for each cluster's center.<br>
+                             4. The <strong>Cluster Plot</strong> is a 2D visualization (t-SNE) of the high-dimensional text data.">
+                    <i class="bi bi-info-circle-fill"></i>
+                </span>
+            </h3>
+            {% endif %}
+
             {% if top_keywords %}
-            <h3>🔑 Top Cluster Keywords</h3>
+            <h5 class="mt-3">🔑 Top ML Keywords</h5>
             <div class="keyword-list">
                 {% for cluster_name, keywords in top_keywords.items() %}
                     <strong>{{ cluster_name }}:</strong>
                     <p>{{ keywords|join(', ') }}</p>
                 {% endfor %}
             </div>
-            <hr>
             {% endif %}
 
-            <!-- CLUSTER PLOT -->
             {% if plot_data %}
-            <h3>🗺️ Cluster Plot</h3>
+            <h5 class="mt-3">🗺️ Cluster Plot (t-SNE)</h5>
             <canvas id="clusterPlot" width="400" height="250"></canvas>
             <hr>
             {% endif %}
 
             <h5>🔥 Top 3 Most Viewed Covers</h5>
-            <ol>
+            <ol class="top-covers-list">
                 {% for t in top_covers %}
-                <li class="mb-2">
-                    <a href="{{ t.url }}" target="_blank">{{ t.title }}</a><br>
-                    <small class="text-secondary">{{ "{:,}".format(t.views) }} views</small>
+                <li class="top-cover-item">
+                    <a href="{{ t.url }}" target="_blank">
+                        <img src="{{ t.thumbnail }}" alt="thumbnail" class="top-cover-thumbnail">
+                    </a>
+                    <div class="top-cover-info">
+                        <a href="{{ t.url }}" target="_blank" class="top-cover-title" title="{{ t.title }}">
+                            {{ t.title }}
+                        </a>
+                        <small class="top-cover-channel">by {{ t.channel }}</small>
+                        <small class="top-cover-views">{{ "{:,}".format(t.views) }} views</small>
+                    </div>
                 </li>
                 {% endfor %}
             </ol>
@@ -120,13 +189,12 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+<!-- --- CHANGED: Moved all page scripts into the new 'scripts' block --- -->
+{% block scripts %}
 <script>
-    console.log("Months data:", {{ months|tojson }});
-    console.log("Upload counts:", {{ upload_counts|tojson }});
-</script>
-<script>
-    // UPLOAD CHART (BAR)
+    // --- UPLOAD CHART (Existing) ---
     const ctx = document.getElementById('uploadChart').getContext('2d');
     const months = {{ months|tojson }};
     const uploadCounts = {{ upload_counts|tojson }};
@@ -145,26 +213,12 @@
             }]
         },
         options: {
-            scales: {
-                x: {
-                    ticks: { color: '#ddd' },
-                    grid: { color: '#444' }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#ddd' },
-                    grid: { color: '#444' }
-                }
-            },
-            plugins: {
-                legend: {
-                    labels: { color: '#ddd' }
-                }
-            }
+            scales: { x: { ticks: { color: '#ddd' }, grid: { color: '#444' } }, y: { beginAtZero: true, ticks: { color: '#ddd' }, grid: { color: '#444' } } },
+            plugins: { legend: { labels: { color: '#ddd' } } }
         }
     });
 
-    // CLUSTER PLOT
+    // --- CLUSTER PLOT SCRIPT (Existing) ---
     const plotData = {{ plot_data|tojson }};
     if (plotData && plotData.length > 0) {
         const clusterColors = {
@@ -208,6 +262,13 @@
             }
         });
     }
-</script>
 
+    // --- Tooltip Initialization Script ---
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl, {
+        customClass: 'info-tooltip' // Apply our custom dark-mode style
+      })
+    })
+</script>
 {% endblock %}

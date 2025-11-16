@@ -1,9 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="text-center" style="animation: fadeIn 0.6s ease;">
+    
+    <!-- Main Welcome Text -->
     <h1 class="fw-bold mb-3">🎶 Discover Song Cover Trends</h1>
-    <p class="text-secondary mb-4">
-        Find out how popular your favorite songs are based on YouTube cover activity.
+    <p class="fs-5 text-secondary mb-5">
+        Search for any song in the header above to get started.
     </p>
 
     <form action="/results" method="GET" class="d-flex justify-content-center mb-5">
@@ -13,12 +15,35 @@
             <button type="submit" class="btn btn-primary btn-lg px-4">Analyze</button>
         </div>
     </form>
-    <div class="mt-5">
-        <h3 class="fw-bold mb-3">How It Works</h3>
-        <p class="text-secondary">
+
+    <!-- "How it Works" Panel, styled to match the results page -->
+    <div class="analytics-panel" style="max-width: 800px; margin: auto; text-align: left;">
+        <h3 class="fw-bold mb-3 text-center">How It Works</h3>
+        <p class="text-secondary" style="font-size: 1.1rem; line-height: 1.6;">
             CoverScope leverages the YouTube Data API to search for cover versions of the song you enter. 
-            It analyzes upload frequency, view counts, and channel popularity to generate a trend score 
-            and provide insights into how widely covered the song is on YouTube.
+            It then analyzes, filters, and classifies the results to provide rich, actionable insights.
         </p>
+
+        <hr class="my-4">
+
+        <div class="row g-4">
+            <div class="col-md-6">
+                <h5 class="fw-bold"><i class="bi bi-funnel-fill me-2 text-primary"></i>Intelligent Filtering</h5>
+                <p class="text-secondary">Automatically separates real covers from noise like official videos, lyric videos, and karaoke tracks.</p>
+            </div>
+            <div class="col-md-6">
+                <h5 class="fw-bold"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Trend Analysis</h5>
+                <p class="text-secondary">Generates a live "Trend Score" and upload-frequency chart based on recency, views, and volume.</p>
+            </div>
+            <div class="col-md-6">
+                <h5 class="fw-bold"><i class="bi bi-tags-fill me-2 text-primary"></i>Rule-Based Classification</h5>
+                <p class="text-secondary">Uses stable, keyword-based rules to categorize covers as <span class="fw-bold">Vocal</span>, <span class="fw-bold">Instrumental</span>, <span class="fw-bold">Acoustic</span>, or <span class="fw-bold">Band</span>.</p>
+            </div>
+            <div class="col-md-6">
+                <h5 class="fw-bold"><i class="bi bi-robot me-2 text-primary"></i>ML Clustering (t-SNE)</h5>
+                <p class="text-secondary">Performs experimental ML clustering to find "natural" groups in the data, which you can compare against the stable rules.</p>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
