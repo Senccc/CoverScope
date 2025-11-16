@@ -1,6 +1,8 @@
 # utils/ml_classifier.py
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans
+from sklearn.manifold import TSNE  
+import numpy as np
 import re
 
 # Keyword buckets (English + Japanese)
@@ -72,6 +74,38 @@ def map_clusters_to_names(videos, labels):
 
     return mapping
 
+def get_top_keywords_per_cluster(kmeans, vectorizer, cluster_name_map, n_keywords=5):
+    """
+    Finds the top N keywords (TF-IDF features) for each named cluster.
+    """
+    try:
+        keywords = {}
+        # Get the words for each feature index
+        terms = vectorizer.get_feature_names_out()
+        # Get the "center" of each cluster
+        cluster_centers = kmeans.cluster_centers_
+        
+        # Get the original cluster index (0, 1, 2, 3) for each cluster name
+        name_to_index = {}
+        for idx, name in cluster_name_map.items():
+            # Handle potential duplicate names (e.g., two clusters map to "Other")
+            if name not in name_to_index:
+                name_to_index[name] = idx
+            
+        for name, idx in name_to_index.items():
+            # Get the scores for this cluster's center
+            center = cluster_centers[idx]
+            # Find the indices of the top N keywords
+            top_indices = np.argsort(center)[::-1][:n_keywords]
+            # Map indices to words
+            top_terms = [terms[i] for i in top_indices]
+            keywords[name] = top_terms
+            
+        return keywords
+    except Exception as e:
+        print(f"Error getting top keywords: {e}")
+        return {} # Return empty on error
+
 def cluster_cover_videos(videos, max_features=800):
     """
     videos: list of dicts (each must have title and description)
@@ -104,4 +138,29 @@ def cluster_cover_videos(videos, max_features=800):
     # Map each cluster to a human name via keyword counting
     cluster_name_map = map_clusters_to_names(videos, labels)
 
-    return list(map(int, labels)), cluster_name_map
+    # Get top keywords for each cluster
+    top_keywords = get_top_keywords_per_cluster(kmeans, vectorizer, cluster_name_map)
+    
+    # Run t-SNE for 2D plot data
+    # Use .toarray() because t-SNE doesn't like sparse matrices
+    tsne = TSNE(n_components=2, random_state=42, perplexity=min(5, len(videos) - 1))
+    coords = tsne.fit_transform(X.toarray())
+    
+    # Build data for Chart.js scatter plot
+    plot_data = []
+    for i, video in enumerate(videos):
+        label_index = int(labels[i])
+        plot_data.append({
+            "x": float(coords[i, 0]),
+            "y": float(coords[i, 1]),
+            "label": cluster_name_map.get(label_index, "Other"),
+            "title": video["title"] # For the tooltip
+        })
+    
+    # Return all results in a dictionary
+    return {
+        "labels": list(map(int, labels)),
+        "cluster_name_map": cluster_name_map,
+        "plot_data": plot_data,
+        "top_keywords": top_keywords
+    }

@@ -34,8 +34,7 @@ def results():
     
     cover_count = len(cover_videos)
 
-    # 2. NOW, run analytics ONLY on the clean cover_videos list
-    # --- CHANGED: All functions now use cover_videos ---
+    # 2. Run analytics ONLY on the clean cover_videos list
     top_covers = get_top_covers(cover_videos)
     trend_score = calculate_trend_score(cover_videos)
     trend_summary = generate_trend_summary(trend_score)
@@ -43,11 +42,13 @@ def results():
 
 
     # 3. Run ML on cover videos
-    # --- CHANGED: num_clusters is now 4 to match your 4 keyword buckets ---
-    labels, cluster_name_map = cluster_cover_videos(cover_videos)
+    cluster_results = cluster_cover_videos(cover_videos)
+    labels = cluster_results["labels"]
+    cluster_name_map = cluster_results["cluster_name_map"]
+    plot_data = cluster_results["plot_data"]
+    top_keywords = cluster_results["top_keywords"]
 
     # Assign cluster labels and names back into each video
-    # This part was already 100% correct!
     for video, label in zip(cover_videos, labels):
         video["cluster"] = int(label)
         video["cluster_name"] = cluster_name_map.get(label, "Other")
@@ -55,17 +56,19 @@ def results():
     
     return render_template(
         "results.html",
-        videos=videos, # Pass the original full list for the avg view calculation
+        videos=videos, 
         song_query=song_query,
         top_covers=top_covers,
         trend_score=trend_score,
         trend_summary=trend_summary,
         months=months,
         upload_counts=upload_counts,
-        cover_videos=cover_videos, # This list now contains cluster_name
+        cover_videos=cover_videos,
         noise_videos=noise_videos,
         cover_count=cover_count,
-        total_results=total_results
+        total_results=total_results,
+        plot_data=plot_data,
+        top_keywords=top_keywords
     )
 
 

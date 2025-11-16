@@ -217,13 +217,26 @@ button:hover {
 
 .analytics-panel canvas {
     width: 100% !important;
-    max-width: 340px;
     height: auto !important;
     margin-top: 10px;
     margin-bottom: 20px;
     background-color: #1e1e1e;
     border-radius: 8px;
     padding: 5px;
+}
+
+.keyword-list {
+    width: 100%;
+    text-align: left;
+    padding: 0 10px;
+    font-size: 0.9rem;
+}
+.keyword-list strong {
+    color: #75c3c3;
+}
+.keyword-list p {
+    color: #ccc;
+    margin-bottom: 10px;
 }
 
 .trend-score {

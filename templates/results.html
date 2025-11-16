@@ -69,7 +69,7 @@
     </div>
 
     <!-- RIGHT: Analytics panel with its own scroll -->
-    <div class="col-right overflow-auto" style="width: 380px;">
+    <div class="col-right overflow-auto" style="width: 460px;">
         <div class="analytics-panel">
             <h4>📊 Trend Analytics</h4>
             <p>Trend Score:</p>
@@ -85,6 +85,26 @@
             <h3>📆 Monthly Upload Frequency</h3>
             <canvas id="uploadChart" width="400" height="200"></canvas>
             <hr>
+
+            <!-- TOP KEYWORDS DISPLAY -->
+            {% if top_keywords %}
+            <h3>🔑 Top Cluster Keywords</h3>
+            <div class="keyword-list">
+                {% for cluster_name, keywords in top_keywords.items() %}
+                    <strong>{{ cluster_name }}:</strong>
+                    <p>{{ keywords|join(', ') }}</p>
+                {% endfor %}
+            </div>
+            <hr>
+            {% endif %}
+
+            <!-- CLUSTER PLOT -->
+            {% if plot_data %}
+            <h3>🗺️ Cluster Plot</h3>
+            <canvas id="clusterPlot" width="400" height="200"></canvas>
+            <hr>
+            {% endif %}
+
             <h5>🔥 Top 3 Most Viewed Covers</h5>
             <ol>
                 {% for t in top_covers %}
@@ -105,6 +125,7 @@
     console.log("Upload counts:", {{ upload_counts|tojson }});
 </script>
 <script>
+    // UPLOAD CHART (BAR)
     const ctx = document.getElementById('uploadChart').getContext('2d');
     const months = {{ months|tojson }};
     const uploadCounts = {{ upload_counts|tojson }};
@@ -141,6 +162,51 @@
             }
         }
     });
+
+        // --- NEW CLUSTER PLOT SCRIPT ---
+    const plotData = {{ plot_data|tojson }};
+    if (plotData && plotData.length > 0) {
+        const clusterColors = {
+            'Vocal cover': 'rgba(75, 192, 192, 0.8)', // Teal
+            'Instrumental': 'rgba(255, 159, 64, 0.8)', // Orange
+            'Acoustic / Soft': 'rgba(153, 102, 255, 0.8)', // Purple
+            'Band / Full Arrangement': 'rgba(255, 99, 132, 0.8)', // Red
+            'Other / Remix': 'rgba(100, 100, 100, 0.8)' // Gray
+        };
+
+        const scatterData = {
+            datasets: Object.keys(clusterColors).map(label => ({
+                label: label,
+                data: plotData.filter(d => d.label === label),
+                backgroundColor: clusterColors[label],
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }))
+        };
+
+        const ctxPlot = document.getElementById('clusterPlot').getContext('2d');
+        new Chart(ctxPlot, {
+            type: 'scatter',
+            data: scatterData,
+            options: {
+                scales: {
+                    x: { ticks: { display: false, color: '#ddd' }, grid: { color: '#444' } },
+                    y: { ticks: { display: false, color: '#ddd' }, grid: { color: '#444' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#ddd' } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                // Show title in tooltip
+                                return context.raw.title;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
 </script>
 
 {% endblock %}
