@@ -32,8 +32,8 @@ CoverScope is a Python Flask web application that provides in-depth trend analys
 
 1.  **Clone the repository:**
     ```bash
-    git clone [your-repo-url]
-    cd [your-repo-name]
+    git clone https://github.com/Senccc/CoverScope.git
+    cd CoverScope
     ```
 
 2.  **Create and activate a virtual environment:**
